@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "ちいかわテーマ",
+  "version": "1.0",
+  "description": "ブラウザをちいかわテーマにカスタマイズします",
+  "permissions": ["activeTab"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["styles.css"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["images/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "icons": {
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  }
+} 

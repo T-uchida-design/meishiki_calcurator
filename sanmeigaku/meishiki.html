@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>命式くん</title>
+  <script src="chinese-lunar.min.js"></script>
+  <script src="main.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; }
+    .container { max-width: 400px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px #ccc; }
+    h1 { text-align: center; }
+    label { display: block; margin-top: 12px; }
+    input, select { width: 100%; padding: 8px; margin-top: 4px; }
+    button { margin-top: 16px; width: 100%; padding: 10px; background: #ffb6c1; border: none; border-radius: 4px; font-size: 1em; }
+    .result { margin-top: 24px; background: #f0f0f0; padding: 12px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>命式くん</h1>
+    <form id="meishiki-form">
+      <label>生年月日
+        <input type="date" id="birthday" required>
+      </label>
+      <label>性別
+        <select id="gender" required>
+          <option value="">選択してください</option>
+          <option value="male">男性</option>
+          <option value="female">女性</option>
+        </select>
+      </label>
+      <button type="submit">命式を算出</button>
+    </form>
+    <div class="result" id="result"></div>
+  </div>
+  <script>
+    // 干支の配列
+    const heavenlyStems = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+    const earthlyBranches = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+
+    document.getElementById('meishiki-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const birthday = document.getElementById('birthday').value;
+      const gender = document.getElementById('gender').value;
+      if (!birthday || !gender) return;
+
+      const date = new Date(birthday);
+      // グローバル変数名を修正
+      const lunar = window.ChineseLunar || window['ChineseLunar'];
+      if (!lunar) {
+        document.getElementById('result').innerHTML = 'ライブラリの読み込みに失敗しました。';
+        return;
+      }
+      // 年柱
+      const yearGanzhi = lunar.getYearGanzhi(date);
+      // 月柱
+      const monthGanzhi = lunar.getMonthGanzhi(date);
+      // 日柱
+      const dayGanzhi = lunar.getDayGanzhi(date);
+
+      let html = `<b>生年月日:</b> ${birthday}<br>`;
+      html += `<b>性別:</b> ${gender === 'male' ? '男性' : '女性'}<br><br>`;
+      html += `<b>年柱:</b> ${yearGanzhi}<br>`;
+      html += `<b>月柱:</b> ${monthGanzhi}<br>`;
+      html += `<b>日柱:</b> ${dayGanzhi}<br>`;
+
+      document.getElementById('result').innerHTML = html;
+    });
+
+    const gl = new window.GeneralLunar();
+  </script>
+</body>
+</html>

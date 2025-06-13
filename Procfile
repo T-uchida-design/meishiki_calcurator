@@ -1,0 +1,1 @@
+web: streamlit run meishiki_calculator/app.py 

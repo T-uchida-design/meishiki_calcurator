@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>命式計算</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>命式計算</h1>
+        <form id="birthForm">
+            <div class="form-group">
+                <label for="birth_date">生年月日：</label>
+                <input type="date" id="birth_date" name="birth_date" required>
+            </div>
+            <div class="form-group">
+                <label for="birth_time">出生時刻：</label>
+                <input type="time" id="birth_time" name="birth_time" required>
+            </div>
+            <button type="submit">計算</button>
+        </form>
+        <div id="result" class="result-container">
+            <!-- 結果がここに表示されます -->
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

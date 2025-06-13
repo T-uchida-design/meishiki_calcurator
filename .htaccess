@@ -1,0 +1,6 @@
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/streamlit
+RewriteRule ^(.*)$ http://localhost:8501/$1 [P,L]
+
+ProxyPass /streamlit http://localhost:8501
+ProxyPassReverse /streamlit http://localhost:8501 

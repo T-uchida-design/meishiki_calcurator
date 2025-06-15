@@ -1,5 +1,7 @@
 import requests
-from datetime import datetime as dt
+import pandas as pd
+import datetime
+from datetime import timedelta
 
 JIKKAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
 JUNISHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
@@ -125,7 +127,7 @@ def get_risshun_date(year):
     for day in range(1, 15):
         info = get_koyomi_info(year, 2, day)
         if info["sekki"] == "立春":
-            return dt(year, 2, day)
+            return datetime.datetime(year, 2, day)
     raise ValueError("立春が見つかりません")
 
 # 年柱（六十干支表ロジック）
@@ -151,7 +153,7 @@ def get_setsuiri_date(date):
             try:
                 info = get_koyomi_info(y, m, day)
                 if info["sekki"] in sekki_list:
-                    setsuiri = dt(y, m, day)
+                    setsuiri = datetime.datetime(y, m, day)
                     if setsuiri <= date:
                         if (last_setsuiri is None) or (setsuiri > last_setsuiri):
                             last_setsuiri = setsuiri
@@ -218,7 +220,7 @@ def get_ritsushun_year(date):
     # 2024年の立春を基準に計算
     base_year = 2024
     year_diff = date.year - base_year
-    ritsushun = dt(SETSUIRI_2025[2].year + year_diff, SETSUIRI_2025[2].month, SETSUIRI_2025[2].day)
+    ritsushun = datetime.datetime(SETSUIRI_2025[2].year + year_diff, SETSUIRI_2025[2].month, SETSUIRI_2025[2].day)
     
     # 立春前なら前年
     if date < ritsushun:
@@ -228,7 +230,7 @@ def get_ritsushun_year(date):
 def calculate_hour_eto(date, hour):
     """日付と時刻から時の干支を計算する"""
     # 日の干支を基準に計算
-    day_cycle = (date - dt(1900, 1, 1)).days % 60
+    day_cycle = (date - datetime.datetime(1900, 1, 1)).days % 60
     # 時刻は2時間ごとに干支が変わる
     hour_index = hour // 2
     jikkan_index = (day_cycle * 2 + hour_index) % 10
@@ -328,7 +330,7 @@ def get_days_from_setsuiri_for_shi(birth_date, shi):
     if shi == '丑' and birth_date.month == 1:
         year -= 1
         
-    setsuiri = get_setsuiri_date(dt(year, month, 1))
+    setsuiri = get_setsuiri_date(datetime.datetime(year, month, 1))
     return (birth_date - setsuiri).days
 
 # 天中殺の計算
@@ -382,3 +384,81 @@ def get_tenchuu_by_nikkanshi(nikkanshi):
     elif 51 <= num <= 60:
         return '子丑天中殺'
     return '' 
+
+# 節入りカレンダーを読み込む
+def load_setsuiri_calendar():
+    try:
+        return pd.read_csv('meishiki_calculator/setsuiri_calendar.csv')
+    except Exception as e:
+        print(f"節入りカレンダーの読み込みエラー: {e}")
+        return None
+
+# 指定された年の節入り日付を取得
+def get_setsuiri_dates(year):
+    calendar = load_setsuiri_calendar()
+    if calendar is None:
+        return None
+    
+    year_data = calendar[calendar['year'] == year]
+    if year_data.empty:
+        return None
+    
+    return {
+        'shokan': datetime.datetime.strptime(year_data['shokan'].iloc[0], '%Y-%m-%d'),
+        'risshun': datetime.datetime.strptime(year_data['risshun'].iloc[0], '%Y-%m-%d'),
+        'keichitsu': datetime.datetime.strptime(year_data['keichitsu'].iloc[0], '%Y-%m-%d'),
+        'seimei': datetime.datetime.strptime(year_data['seimei'].iloc[0], '%Y-%m-%d'),
+        'rikka': datetime.datetime.strptime(year_data['rikka'].iloc[0], '%Y-%m-%d'),
+        'boshu': datetime.datetime.strptime(year_data['boshu'].iloc[0], '%Y-%m-%d'),
+        'shosho': datetime.datetime.strptime(year_data['shosho'].iloc[0], '%Y-%m-%d'),
+        'rikka2': datetime.datetime.strptime(year_data['rikka2'].iloc[0], '%Y-%m-%d'),
+        'hakuro': datetime.datetime.strptime(year_data['hakuro'].iloc[0], '%Y-%m-%d'),
+        'kanro': datetime.datetime.strptime(year_data['kanro'].iloc[0], '%Y-%m-%d'),
+        'rittou': datetime.datetime.strptime(year_data['rittou'].iloc[0], '%Y-%m-%d'),
+        'taisetsu': datetime.datetime.strptime(year_data['taisetsu'].iloc[0], '%Y-%m-%d')
+    }
+
+# 節入りからの日数を計算（改善版）
+def get_days_from_setsuiri_for_shi(birth_date, shi):
+    if isinstance(birth_date, datetime.datetime):
+        birth_date = birth_date.date()
+    
+    year = birth_date.year
+    setsuiri_dates = get_setsuiri_dates(year)
+    
+    if setsuiri_dates is None:
+        return 0
+    
+    # 地支に対応する節入りを取得
+    shi_to_setsuiri = {
+        '子': 'risshun',    # 立春
+        '丑': 'keichitsu',  # 啓蟄
+        '寅': 'seimei',     # 清明
+        '卯': 'rikka',      # 立夏
+        '辰': 'boshu',      # 芒種
+        '巳': 'shosho',     # 小暑
+        '午': 'rikka2',     # 立秋
+        '未': 'hakuro',     # 白露
+        '申': 'kanro',      # 寒露
+        '酉': 'rittou',     # 立冬
+        '戌': 'taisetsu',   # 大雪
+        '亥': 'shokan'      # 小寒
+    }
+    
+    setsuiri_name = shi_to_setsuiri.get(shi)
+    if setsuiri_name is None:
+        return 0
+    
+    setsuiri_date = setsuiri_dates[setsuiri_name].date()
+    
+    # 日数計算
+    days = (birth_date - setsuiri_date).days
+    
+    # 負の値の場合は次の年の節入りから計算
+    if days < 0:
+        next_year_setsuiri = get_setsuiri_dates(year + 1)
+        if next_year_setsuiri is not None:
+            next_setsuiri_date = next_year_setsuiri[setsuiri_name].date()
+            days = (birth_date - next_setsuiri_date).days
+    
+    return days 

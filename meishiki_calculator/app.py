@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date, time
+import datetime
 from kanshi_data import (
     calculate_eto, calculate_month_eto, calculate_day_eto,
     get_juusei, get_juunisei, get_main_zokan, get_days_from_setsuiri_for_shi,
@@ -80,8 +80,8 @@ def calculate_meishiki(birth_date):
     """命式を計算する"""
     try:
         # birth_dateがdate型ならdatetime型に変換
-        if isinstance(birth_date, date) and not isinstance(birth_date, datetime):
-            birth_date = datetime.combine(birth_date, time())
+        if isinstance(birth_date, datetime.date) and not isinstance(birth_date, datetime.datetime):
+            birth_date = datetime.datetime.combine(birth_date, datetime.time())
 
         # 干支計算
         eto_nen = calculate_eto(birth_date)
@@ -92,27 +92,15 @@ def calculate_meishiki(birth_date):
         getsu_kan, getsu_shi = eto_getsu[0], eto_getsu[1]
         nichi_kan, nichi_shi = eto_nichi[0], eto_nichi[1]
 
-        # 日数計算
-        try:
-            days_nen = get_days_from_setsuiri_for_shi(birth_date, nen_shi)
-        except:
-            days_nen = 0
-        try:
-            days_getsu = get_days_from_setsuiri_for_shi(birth_date, getsu_shi)
-        except:
-            days_getsu = 0
-        try:
-            days_nichi = get_days_from_setsuiri_for_shi(birth_date, nichi_shi)
-        except:
-            days_nichi = 0
+        # 日数計算（改善版）
+        days_nen = get_days_from_setsuiri_for_shi(birth_date, nen_shi)
+        days_getsu = get_days_from_setsuiri_for_shi(birth_date, getsu_shi)
+        days_nichi = get_days_from_setsuiri_for_shi(birth_date, nichi_shi)
 
-        # 主蔵干計算（デバッグ出力追加）
+        # 主蔵干計算
         main_zokan_nen = get_main_zokan(nen_shi, days_nen)
-        print(f'年支: {nen_shi}, 年の日数: {days_nen}, 年の主蔵干: {main_zokan_nen}')
         main_zokan_getsu = get_main_zokan(getsu_shi, days_getsu)
-        print(f'月支: {getsu_shi}, 月の日数: {days_getsu}, 月の主蔵干: {main_zokan_getsu}')
         main_zokan_nichi = get_main_zokan(nichi_shi, days_nichi)
-        print(f'日支: {nichi_shi}, 日の日数: {days_nichi}, 日の主蔵干: {main_zokan_nichi}')
 
         # 陽占計算（人体図）
         star_1 = get_juusei(nichi_kan, nen_kan)        # ①位置
@@ -293,9 +281,9 @@ def main():
     # 生年月日入力
     birth_date = st.sidebar.date_input(
         "生年月日を選択してください",
-        value=date(1990, 1, 1),
-        min_value=date(1900, 1, 1),
-        max_value=date.today()
+        value=datetime.date(1990, 1, 1),
+        min_value=datetime.date(1900, 1, 1),
+        max_value=datetime.date.today()
     )
     
     # 性別選択（新規追加）

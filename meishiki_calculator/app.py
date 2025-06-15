@@ -215,6 +215,74 @@ def display_star_descriptions():
     - **晩年**：晩年期の運勢や傾向
     """)
 
+def get_main_zokan(shi, days_from_setsuiri):
+    if shi == '子':
+        return '癸'
+    elif shi == '丑':
+        if days_from_setsuiri <= 8:
+            return '癸'
+        elif 9 <= days_from_setsuiri <= 11:
+            return '辛'
+        else:
+            return '己'
+    elif shi == '寅':
+        if days_from_setsuiri <= 6:
+            return '戊'
+        elif 7 <= days_from_setsuiri <= 13:
+            return '丙'
+        else:
+            return '甲'
+    elif shi == '卯':
+        return '乙'
+    elif shi == '辰':
+        if days_from_setsuiri <= 8:
+            return '乙'
+        elif 9 <= days_from_setsuiri <= 11:
+            return '癸'
+        else:
+            return '戊'
+    elif shi == '巳':
+        if days_from_setsuiri <= 4:
+            return '戊'
+        elif 5 <= days_from_setsuiri <= 13:
+            return '庚'
+        else:
+            return '丙'
+    elif shi == '午':
+        if days_from_setsuiri <= 18:
+            return '己'
+        else:
+            return '丁'
+    elif shi == '未':
+        if days_from_setsuiri <= 8:
+            return '丁'
+        elif 9 <= days_from_setsuiri <= 11:
+            return '乙'
+        else:
+            return '己'
+    elif shi == '申':
+        if days_from_setsuiri <= 9:
+            return '戊'
+        elif 10 <= days_from_setsuiri <= 12:
+            return '壬'
+        else:
+            return '庚'
+    elif shi == '酉':
+        return '辛'
+    elif shi == '戌':
+        if days_from_setsuiri <= 8:
+            return '辛'
+        elif 9 <= days_from_setsuiri <= 11:
+            return '丁'
+        else:
+            return '戊'
+    elif shi == '亥':
+        if days_from_setsuiri <= 11:
+            return '甲'
+        else:
+            return '壬'
+    return ''
+
 def main():
     # タイトル
     st.markdown('<h1 class="main-title">🔮 算命学 命式計算システム</h1>', unsafe_allow_html=True)

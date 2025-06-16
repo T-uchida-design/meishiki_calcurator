@@ -3,8 +3,9 @@ import pandas as pd
 import datetime
 from kanshi_data import (
     calculate_eto, calculate_month_eto, calculate_day_eto,
-    get_juusei, get_juunisei, get_main_zokan, get_days_from_setsuiri_for_shi,
-    get_tenchuu_by_nikkanshi, check_tenchuu_period, JUUSEI_TABLE, JUUNISEI_TABLE
+    get_juusei, get_juunisei, get_main_zokan,
+    get_tenchuu_by_nikkanshi, check_tenchuu_period, JUUSEI_TABLE, JUUNISEI_TABLE,
+    get_setsuiri_and_shi
 )
 
 # ページ設定
@@ -92,10 +93,18 @@ def calculate_meishiki(birth_date):
         getsu_kan, getsu_shi = eto_getsu[0], eto_getsu[1]
         nichi_kan, nichi_shi = eto_nichi[0], eto_nichi[1]
 
-        # 日数計算（改善版）
-        days_nen = get_days_from_setsuiri_for_shi(birth_date, nen_shi)
-        days_getsu = get_days_from_setsuiri_for_shi(birth_date, getsu_shi)
-        days_nichi = get_days_from_setsuiri_for_shi(birth_date, nichi_shi)
+        try:
+            # 月支とその節入り日を取得
+            getsu_setsuiri, getsu_shi = get_setsuiri_and_shi(birth_date)  # 戻り値の順序を修正
+            days = (birth_date.date() - getsu_setsuiri).days
+        except ValueError as e:
+            st.error(f"節入り計算エラー: {str(e)}")
+            return None
+
+        # 年・月・日すべてこのdaysを使う
+        days_nen = days
+        days_getsu = days
+        days_nichi = days
 
         # 主蔵干計算
         main_zokan_nen = get_main_zokan(nen_shi, days_nen)

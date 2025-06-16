@@ -2,6 +2,8 @@ import requests
 import pandas as pd
 import datetime
 from datetime import timedelta
+import os
+from datetime import datetime as dt
 
 JIKKAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
 JUNISHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
@@ -24,90 +26,87 @@ ZOKAN_TABLE = {
 
 # 蔵干日数表（全地支・21日分サンプル）
 ZOKAN_DAY_TABLE = {
-    '子': ['癸'] * 21,
-    '丑': ['己'] * 10 + ['癸'] * 10 + ['辛'],
-    '寅': ['甲'] * 7 + ['丙'] * 7 + ['戊'] * 7,
-    '卯': ['乙'] * 21,
-    '辰': ['戊'] * 6 + ['乙'] * 6 + ['癸'] * 6 + ['戊'] * 3,
-    '巳': ['丙'] * 6 + ['戊'] * 6 + ['庚'] * 6 + ['丙'] * 3,
-    '午': ['丁'] * 10 + ['己'] * 10 + ['丁'],
-    '未': ['己'] * 7 + ['丁'] * 7 + ['乙'] * 7,
-    '申': ['庚'] * 6 + ['壬'] * 6 + ['戊'] * 6 + ['庚'] * 3,
-    '酉': ['辛'] * 21,
-    '戌': ['戊'] * 6 + ['辛'] * 6 + ['丁'] * 6 + ['戊'] * 3,
-    '亥': ['壬'] * 10 + ['甲'] * 10 + ['壬'],
+    '子': ['癸'],  # 常に癸
+    '丑': ['癸'] * 10 + ['辛'] * 3 + ['己'] * 8,
+    '寅': ['戊'] * 8 + ['丙'] * 7 + ['甲'] * 6,
+    '卯': ['乙'],  # 常に乙
+    '辰': ['乙'] * 10 + ['癸'] * 3 + ['戊'] * 8,
+    '巳': ['戊'] * 6 + ['庚'] * 9 + ['丙'] * 6,
+    '午': ['己'] * 20 + ['丁'],
+    '未': ['丁'] * 10 + ['乙'] * 3 + ['己'] * 8,
+    '申': ['戊'] * 11 + ['壬'] * 3 + ['庚'] * 7,
+    '酉': ['辛'],  # 常に辛
+    '戌': ['辛'] * 10 + ['丁'] * 3 + ['戊'] * 8,
+    '亥': ['甲'] * 13 + ['壬'] * 8,
 }
 
 def get_zokan(jishi):
     """地支から蔵干リストを取得"""
     return ZOKAN_TABLE.get(jishi, [])
 
-def get_main_zokan(shi, days_from_setsuiri):
-    """
-    支（地支）と節入りからの日数から主蔵干を返す（ユーザー指定ルール）
-    """
-    if shi == '子':
-        return '癸'
+def get_main_zokan(shi, day):
+    if shi == "子":
+        return "癸"
     elif shi == '丑':
-        if days_from_setsuiri <= 8:
+        if day <= 8:
             return '癸'
-        elif 9 <= days_from_setsuiri <= 11:
+        elif 9 <= day <= 11:
             return '辛'
         else:
             return '己'
     elif shi == '寅':
-        if days_from_setsuiri <= 6:
+        if day <= 6:
             return '戊'
-        elif 7 <= days_from_setsuiri <= 13:
+        elif 7 <= day <= 13:
             return '丙'
         else:
             return '甲'
     elif shi == '卯':
         return '乙'
     elif shi == '辰':
-        if days_from_setsuiri <= 8:
+        if day <= 8:
             return '乙'
-        elif 9 <= days_from_setsuiri <= 11:
+        elif 9 <= day <= 11:
             return '癸'
         else:
             return '戊'
     elif shi == '巳':
-        if days_from_setsuiri <= 4:
+        if day <= 4:
             return '戊'
-        elif 5 <= days_from_setsuiri <= 13:
+        elif 5 <= day <= 13:
             return '庚'
         else:
             return '丙'
     elif shi == '午':
-        if days_from_setsuiri <= 18:
+        if day <= 18:
             return '己'
         else:
             return '丁'
     elif shi == '未':
-        if days_from_setsuiri <= 8:
+        if day <= 8:
             return '丁'
-        elif 9 <= days_from_setsuiri <= 11:
+        elif 9 <= day <= 11:
             return '乙'
         else:
             return '己'
     elif shi == '申':
-        if days_from_setsuiri <= 9:
+        if day <= 9:
             return '戊'
-        elif 10 <= days_from_setsuiri <= 12:
+        elif 10 <= day <= 12:
             return '壬'
         else:
             return '庚'
     elif shi == '酉':
         return '辛'
     elif shi == '戌':
-        if days_from_setsuiri <= 8:
+        if day <= 8:
             return '辛'
-        elif 9 <= days_from_setsuiri <= 11:
+        elif 9 <= day <= 11:
             return '丁'
         else:
             return '戊'
     elif shi == '亥':
-        if days_from_setsuiri <= 11:
+        if day <= 11:
             return '甲'
         else:
             return '壬'
@@ -306,32 +305,37 @@ def get_juunisei(kan, shi):
     return JUUNISEI_TABLE.get(kan, {}).get(shi, "")
 
 def get_days_from_setsuiri(birth_date):
-    setsuiri = get_setsuiri_date(birth_date)
-    return (birth_date - setsuiri).days 
+    shi, setsuiri_date = get_setsuiri_and_shi(birth_date)
+    if setsuiri_date is None:
+        return None, None
+    days = (birth_date - setsuiri_date).days
+    return shi, days
 
-def get_days_from_setsuiri_for_shi(birth_date, shi):
+def get_setsuiri_and_shi(birth_date):
     """
-    指定した支（地支）の節入り日からbirth_dateまでの日数を返す。
-    - shi: '子'～'亥'
-    - birth_dateの月の支と一致する場合は、その月の節入り日を参照
+    生年月日が属する月支と、その節入り日を返す
     """
-    SHI_TO_MONTH = {
-        '寅': 2, '卯': 3, '辰': 4, '巳': 5, '午': 6, '未': 7,
-        '申': 8, '酉': 9, '戌': 10, '亥': 11, '子': 12, '丑': 1
-    }
+    if isinstance(birth_date, datetime.datetime):
+        birth_date = birth_date.date()
     year = birth_date.year
-    month = SHI_TO_MONTH[shi]
-    
-    # 未の地支の場合、前年の7月の節入り日を参照
-    if shi == '未' and birth_date.month < 7:
-        year -= 1
-    
-    # 丑月（1月）の場合、前年の節入り日
-    if shi == '丑' and birth_date.month == 1:
-        year -= 1
-        
-    setsuiri = get_setsuiri_date(datetime.datetime(year, month, 1))
-    return (birth_date - setsuiri).days
+    setsuiri_dates = get_setsuiri_dates(year)
+    if setsuiri_dates is None:
+        raise ValueError(f"{year}年の節入りデータが見つかりません")
+
+    sekki_names = [
+        'risshun', 'keichitsu', 'seimei', 'rikka', 'boshu', 'shosho',
+        'rikka2', 'hakuro', 'kanro', 'rittou', 'taisetsu', 'shokan'
+    ]
+    shi_list = ['寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥', '子', '丑']
+    setsuiri_list = [setsuiri_dates[name].date() for name in sekki_names]
+
+    for i in range(12):
+        start = setsuiri_list[i]
+        end = setsuiri_list[(i + 1) % 12]
+        # endが翌年の場合も考慮
+        if start <= birth_date < end or (i == 11 and (birth_date >= start or birth_date < end)):
+            return start, shi_list[i]  # 日付と月支の順序を入れ替え
+    raise ValueError(f"{birth_date}の節入りが見つかりません")
 
 # 天中殺の計算
 def check_tenchuu_period(birth_date, tenchuu_type):
@@ -388,77 +392,62 @@ def get_tenchuu_by_nikkanshi(nikkanshi):
 # 節入りカレンダーを読み込む
 def load_setsuiri_calendar():
     try:
-        return pd.read_csv('meishiki_calculator/setsuiri_calendar.csv')
+        # このファイルのディレクトリを基準にパスを解決
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        csv_path = os.path.join(base_dir, 'setsuiri_calendar.csv')
+        df = pd.read_csv(csv_path)
+        df['year'] = df['year'].astype(int)
+        for col in df.columns[1:]:
+            df[col] = pd.to_datetime(df[col])
+        return df
     except Exception as e:
-        print(f"節入りカレンダーの読み込みエラー: {e}")
+        print(f"節入りカレンダーの読み込みに失敗しました: {e}")
         return None
 
-# 指定された年の節入り日付を取得
+# グローバル変数として節入りカレンダーを保持
+SETSUIRI_CALENDAR = load_setsuiri_calendar()
+
+# 節入り日を取得
 def get_setsuiri_dates(year):
-    calendar = load_setsuiri_calendar()
-    if calendar is None:
+    if SETSUIRI_CALENDAR is None:
         return None
     
-    year_data = calendar[calendar['year'] == year]
+    year_data = SETSUIRI_CALENDAR[SETSUIRI_CALENDAR['year'] == year]
     if year_data.empty:
         return None
     
     return {
-        'shokan': datetime.datetime.strptime(year_data['shokan'].iloc[0], '%Y-%m-%d'),
-        'risshun': datetime.datetime.strptime(year_data['risshun'].iloc[0], '%Y-%m-%d'),
-        'keichitsu': datetime.datetime.strptime(year_data['keichitsu'].iloc[0], '%Y-%m-%d'),
-        'seimei': datetime.datetime.strptime(year_data['seimei'].iloc[0], '%Y-%m-%d'),
-        'rikka': datetime.datetime.strptime(year_data['rikka'].iloc[0], '%Y-%m-%d'),
-        'boshu': datetime.datetime.strptime(year_data['boshu'].iloc[0], '%Y-%m-%d'),
-        'shosho': datetime.datetime.strptime(year_data['shosho'].iloc[0], '%Y-%m-%d'),
-        'rikka2': datetime.datetime.strptime(year_data['rikka2'].iloc[0], '%Y-%m-%d'),
-        'hakuro': datetime.datetime.strptime(year_data['hakuro'].iloc[0], '%Y-%m-%d'),
-        'kanro': datetime.datetime.strptime(year_data['kanro'].iloc[0], '%Y-%m-%d'),
-        'rittou': datetime.datetime.strptime(year_data['rittou'].iloc[0], '%Y-%m-%d'),
-        'taisetsu': datetime.datetime.strptime(year_data['taisetsu'].iloc[0], '%Y-%m-%d')
-    }
+        'shokan': year_data['shokan'].iloc[0],
+        'risshun': year_data['risshun'].iloc[0],
+        'keichitsu': year_data['keichitsu'].iloc[0],
+        'seimei': year_data['seimei'].iloc[0],
+        'rikka': year_data['rikka'].iloc[0],
+        'boshu': year_data['boshu'].iloc[0],
+        'shosho': year_data['shosho'].iloc[0],
+        'rikka2': year_data['rikka2'].iloc[0],
+        'hakuro': year_data['hakuro'].iloc[0],
+        'kanro': year_data['kanro'].iloc[0],
+        'rittou': year_data['rittou'].iloc[0],
+        'taisetsu': year_data['taisetsu'].iloc[0]
+    } 
 
-# 節入りからの日数を計算（改善版）
-def get_days_from_setsuiri_for_shi(birth_date, shi):
-    if isinstance(birth_date, datetime.datetime):
-        birth_date = birth_date.date()
-    
-    year = birth_date.year
-    setsuiri_dates = get_setsuiri_dates(year)
-    
-    if setsuiri_dates is None:
-        return 0
-    
-    # 地支に対応する節入りを取得
-    shi_to_setsuiri = {
-        '子': 'risshun',    # 立春
-        '丑': 'keichitsu',  # 啓蟄
-        '寅': 'seimei',     # 清明
-        '卯': 'rikka',      # 立夏
-        '辰': 'boshu',      # 芒種
-        '巳': 'shosho',     # 小暑
-        '午': 'rikka2',     # 立秋
-        '未': 'hakuro',     # 白露
-        '申': 'kanro',      # 寒露
-        '酉': 'rittou',     # 立冬
-        '戌': 'taisetsu',   # 大雪
-        '亥': 'shokan'      # 小寒
-    }
-    
-    setsuiri_name = shi_to_setsuiri.get(shi)
-    if setsuiri_name is None:
-        return 0
-    
-    setsuiri_date = setsuiri_dates[setsuiri_name].date()
-    
-    # 日数計算
-    days = (birth_date - setsuiri_date).days
-    
-    # 負の値の場合は次の年の節入りから計算
-    if days < 0:
-        next_year_setsuiri = get_setsuiri_dates(year + 1)
-        if next_year_setsuiri is not None:
-            next_setsuiri_date = next_year_setsuiri[setsuiri_name].date()
-            days = (birth_date - next_setsuiri_date).days
-    
-    return days 
+# テストコードをif __name__ == "__main__": ブロック内に移動
+if __name__ == "__main__":
+    birth_date = dt(1950, 11, 12)
+
+    # 生まれた月支と、その節入り日を取得
+    getsu_setsuiri, getsu_shi = get_setsuiri_and_shi(birth_date)
+    days = (birth_date.date() - getsu_setsuiri).days
+
+    # 年支・月支・日支（例：年支は本来は自動計算ですが、ここでは仮に「寅」とします）
+    nen_shi = '寅'      # 必要に応じて自動計算ロジックを追加してください
+    nichi_shi = getsu_shi  # 例として日支も月支と同じにしています
+
+    # すべて「月の節入りからの日数」で蔵干を判定
+    zokan_nen = get_main_zokan(nen_shi, days)
+    zokan_getsu = get_main_zokan(getsu_shi, days)
+    zokan_nichi = get_main_zokan(nichi_shi, days)
+
+    print(f"【年支】{nen_shi} の節入りからの日数: {days}　主蔵干: {zokan_nen}")
+    print(f"【月支】{getsu_shi} の節入りからの日数: {days}　主蔵干: {zokan_getsu}")
+    print(f"【日支】{nichi_shi} の節入りからの日数: {days}　主蔵干: {zokan_nichi}") 

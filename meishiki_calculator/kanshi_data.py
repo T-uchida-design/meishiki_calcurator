@@ -431,6 +431,41 @@ def get_setsuiri_dates(year):
         'taisetsu': year_data['taisetsu'].iloc[0]
     } 
 
+# 五行の定義
+GOGYO = {
+    '木': ['甲', '乙', '寅', '卯'],
+    '火': ['丙', '丁', '巳', '午'],
+    '土': ['戊', '己', '丑', '辰', '未', '戌'],
+    '金': ['庚', '辛', '申', '酉'],
+    '水': ['壬', '癸', '亥', '子']
+}
+
+def get_gogyo_count(meishiki_data):
+    """
+    命式データから五行の数を集計する
+    """
+    gogyo_count = {element: 0 for element in GOGYO.keys()}
+    
+    # 天干の集計
+    for kan in [meishiki_data['nen_kan'], meishiki_data['getsu_kan'], meishiki_data['nichi_kan']]:
+        for element, items in GOGYO.items():
+            if kan in items:
+                gogyo_count[element] += 1
+    
+    # 地支の集計
+    for shi in [meishiki_data['nen_shi'], meishiki_data['getsu_shi'], meishiki_data['nichi_shi']]:
+        for element, items in GOGYO.items():
+            if shi in items:
+                gogyo_count[element] += 1
+    
+    # 主蔵干の集計
+    for zokan in [meishiki_data['main_zokan_nen'], meishiki_data['main_zokan_getsu'], meishiki_data['main_zokan_nichi']]:
+        for element, items in GOGYO.items():
+            if zokan in items:
+                gogyo_count[element] += 1
+    
+    return gogyo_count
+
 # テストコードをif __name__ == "__main__": ブロック内に移動
 if __name__ == "__main__":
     birth_date = dt(1950, 11, 12)

@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 import datetime
+import plotly.graph_objects as go
 from kanshi_data import (
     calculate_eto, calculate_month_eto, calculate_day_eto,
     get_juusei, get_juunisei, get_main_zokan,
     get_tenchuu_by_nikkanshi, check_tenchuu_period, JUUSEI_TABLE, JUUNISEI_TABLE,
-    get_setsuiri_and_shi
+    get_setsuiri_and_shi, get_gogyo_count, GOGYO
 )
 
 # ページ設定
@@ -280,6 +281,71 @@ def get_main_zokan(shi, days_from_setsuiri):
             return '壬'
     return ''
 
+def display_gogyo_chart(meishiki_data):
+    st.markdown('<div class="section-title">🌳 五行バランス</div>', unsafe_allow_html=True)
+
+    # 五行の順序
+    categories = ['木', '火', '土', '金', '水']
+
+    # 天干・地支のみ
+    gogyo_count_simple = {k: 0 for k in categories}
+    for kan in [meishiki_data['nen_kan'], meishiki_data['getsu_kan'], meishiki_data['nichi_kan']]:
+        for g, items in GOGYO.items():
+            if kan in items:
+                gogyo_count_simple[g] += 1
+    for shi in [meishiki_data['nen_shi'], meishiki_data['getsu_shi'], meishiki_data['nichi_shi']]:
+        for g, items in GOGYO.items():
+            if shi in items:
+                gogyo_count_simple[g] += 1
+
+    # 蔵干を含む
+    gogyo_count_all = get_gogyo_count(meishiki_data)
+    values_simple = [gogyo_count_simple[k] for k in categories]
+    values_all = [gogyo_count_all[k] for k in categories]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=values_simple,
+        theta=categories,
+        fill='toself',
+        name='五行',
+        line_color='rgba(100, 100, 255, 0.5)',
+        fillcolor='rgba(100, 100, 255, 0.2)'
+    ))
+    fig.add_trace(go.Scatterpolar(
+        r=values_all,
+        theta=categories,
+        fill='toself',
+        name='蔵干含む',
+        line_color='rgba(255, 100, 150, 0.7)',
+        fillcolor='rgba(255, 100, 150, 0.2)'
+    ))
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, max(values_all + values_simple) + 1],
+                tickfont=dict(color='black'),   # 目盛りの文字色
+                linecolor='black'               # 軸線の色
+            ),
+            angularaxis=dict(direction='clockwise', rotation=90)
+        ),
+        showlegend=True,
+        height=400,
+        margin=dict(l=20, r=20, t=20, b=20)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # 五行の説明
+    st.markdown("""
+    **五行の意味:**
+    - **木**: 成長、発展、創造性
+    - **火**: 情熱、活力、表現力
+    - **土**: 安定、実務、現実性
+    - **金**: 収穫、完成、整理
+    - **水**: 知性、柔軟性、適応力
+    """)
+
 def main():
     # タイトル
     st.markdown('<h1 class="main-title">🔮 算命学 命式計算システム</h1>', unsafe_allow_html=True)
@@ -321,7 +387,7 @@ def main():
         st.markdown(f"**性別**: {gender}")
         
         # メインコンテンツ
-        tab1, tab2, tab3 = st.tabs(["📊 命式詳細", "🌟 人体図", "📚 星の説明"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 命式詳細", "🌟 人体図", "📚 星の説明", "🌳 五行バランス"])
         
         with tab1:
             # 陰占
@@ -356,6 +422,10 @@ def main():
         with tab3:
             # 星の説明
             display_star_descriptions()
+        
+        with tab4:
+            # 五行の集計と表示
+            display_gogyo_chart(result)
     
     else:
         # 初期画面
